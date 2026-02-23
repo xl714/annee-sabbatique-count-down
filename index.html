@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Compte à rebours - fin mai 2026</title>
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: #0b0f19;
+      color: #e8ecf6;
+    }
+    .wrap {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+    .timer {
+      font-size: clamp(36px, 6vw, 90px);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .labels {
+      margin-top: 8px;
+      opacity: 0.6;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+    }
+    .workdays {
+      margin-top: 25px;
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <div>
+    <div id="timer" class="timer">--j --h --m --s</div>
+    <div class="labels">jours · heures · minutes · secondes</div>
+    <div class="workdays">
+      Jours de travail restants : <strong id="workdays">--</strong>
+    </div>
+  </div>
+</div>
+
+<script>
+
+  const TARGET = new Date(2026, 4, 31, 23, 59, 59); // 31 mai 2026
+
+  // ===== JOURS FÉRIÉS 2026 (France) =====
+  const PUBLIC_HOLIDAYS = new Set([
+    "20260406",
+    "20260501",
+    "20260508",
+    "20260514",
+    "20260525"
+  ]);
+
+  // ===== CONGÉS PERSONNELS =====
+  // 👉 Ajoute ici tes jours au format yyyymmdd
+  const PERSONAL_LEAVES = new Set([
+    "20260507"
+    // "20260512",
+    // "20260513"
+  ]);
+
+  function formatYYYYMMDD(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}${m}${d}`;
+  }
+
+  function businessDaysRemaining(start, end) {
+    const s = new Date(start);
+    const e = new Date(end);
+
+    s.setHours(0,0,0,0);
+    e.setHours(0,0,0,0);
+
+    if (s > e) return 0;
+
+    let count = 0;
+
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+
+      const day = d.getDay();
+      const isWeekend = (day === 0 || day === 6);
+      const key = formatYYYYMMDD(d);
+
+      const isHoliday = PUBLIC_HOLIDAYS.has(key);
+      const isPersonalLeave = PERSONAL_LEAVES.has(key);
+
+      if (!isWeekend && !isHoliday && !isPersonalLeave) {
+        count++;
+      }
+    }
+
+    return count;
+  }
+
+  function tick() {
+    const now = new Date();
+    let diff = TARGET - now;
+    if (diff < 0) diff = 0;
+
+    const totalSeconds = Math.floor(diff / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    document.getElementById("timer").textContent =
+      `${days} jours ${String(hours).padStart(2,"0")} heures ${String(minutes).padStart(2,"0")} minutes ${String(seconds).padStart(2,"0")} secondes`;
+
+    document.getElementById("workdays").textContent =
+      businessDaysRemaining(now, TARGET);
+  }
+
+  tick();
+  setInterval(tick, 1000);
+
+</script>
+
+</body>
+</html>
