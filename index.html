@@ -1,131 +1,268 @@
 <!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Compte à rebours - fin mai 2026</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Année sabbatique – compte à rebours</title>
 
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: #0b0f19;
-      color: #e8ecf6;
-    }
-    .wrap {
-      height: 100%;
-      display: grid;
-      place-items: center;
-      text-align: center;
-    }
-    .timer {
-      font-size: clamp(36px, 6vw, 90px);
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-    }
-    .labels {
-      margin-top: 8px;
-      opacity: 0.6;
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-    }
-    .workdays {
-      margin-top: 25px;
-      font-size: 20px;
-    }
-  </style>
-</head>
-<body>
+    <!--
+    Cette page web affiche un compte à rebours jusqu'au 31 mai 2026 et
+    calcule le nombre de jours ouvrés restants en tenant compte des
+    week‑ends, des jours fériés et des congés personnels. Pour rendre
+    l’attente plus agréable, un diaporama de photos d’Asie du Sud‑Est
+    défile en arrière‑plan. La typographie et les couleurs ont été
+    modernisées et la taille du nombre de jours de travail restants a
+    été agrandie.
+  -->
 
-<div class="wrap">
-  <div>
-    <div id="timer" class="timer">--j --h --m --s</div>
-    <div class="labels">jours · heures · minutes · secondes</div>
-    <div class="workdays">
-      Jours de travail restants : <strong id="workdays">--</strong>
-    </div>
-  </div>
-</div>
+    <!-- Importation d’une police élégante -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-<script>
-
-  const TARGET = new Date(2026, 4, 31, 23, 59, 59); // 31 mai 2026
-
-  // ===== JOURS FÉRIÉS 2026 (France) =====
-  const PUBLIC_HOLIDAYS = new Set([
-    "20260406",
-    "20260501",
-    "20260508",
-    "20260514",
-    "20260525"
-  ]);
-
-  // ===== CONGÉS PERSONNELS =====
-  // 👉 Ajoute ici tes jours au format yyyymmdd
-  const PERSONAL_LEAVES = new Set([
-    "20260507"
-    // "20260512",
-    // "20260513"
-  ]);
-
-  function formatYYYYMMDD(date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}${m}${d}`;
-  }
-
-  function businessDaysRemaining(start, end) {
-    const s = new Date(start);
-    const e = new Date(end);
-
-    s.setHours(0,0,0,0);
-    e.setHours(0,0,0,0);
-
-    if (s > e) return 0;
-
-    let count = 0;
-
-    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-
-      const day = d.getDay();
-      const isWeekend = (day === 0 || day === 6);
-      const key = formatYYYYMMDD(d);
-
-      const isHoliday = PUBLIC_HOLIDAYS.has(key);
-      const isPersonalLeave = PERSONAL_LEAVES.has(key);
-
-      if (!isWeekend && !isHoliday && !isPersonalLeave) {
-        count++;
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: "Montserrat", sans-serif;
+        background: #0b0f19;
+        color: #e8ecf6;
+        overflow: hidden;
       }
-    }
 
-    return count;
-  }
+      /* Conteneur du diaporama : occupe tout l'écran et placé derrière le contenu */
+      .slideshow-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: 0;
+      }
 
-  function tick() {
-    const now = new Date();
-    let diff = TARGET - now;
-    if (diff < 0) diff = 0;
+      /* Chaque image du diaporama occupe toute la surface et utilise un fondu */
+      .slide {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0;
+        transition: opacity 1s ease-in-out;
+      }
 
-    const totalSeconds = Math.floor(diff / 1000);
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+      /* Conteneur principal pour centrer le texte */
+      .wrap {
+        height: 100%;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        position: relative;
+        z-index: 2;
+      }
 
-    document.getElementById("timer").textContent =
-      `${days} jours ${String(hours).padStart(2,"0")} heures ${String(minutes).padStart(2,"0")} minutes ${String(seconds).padStart(2,"0")} secondes`;
+      .content {
+        position: relative;
+        z-index: 3;
+        padding: 20px;
+        background: rgba(11, 15, 25, 0.4);
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      }
 
-    document.getElementById("workdays").textContent =
-      businessDaysRemaining(now, TARGET);
-  }
+      .title {
+        font-size: clamp(32px, 6vw, 80px);
+        font-weight: 600;
+        margin-bottom: 16px;
+        /* letter-spacing: 0.05em; */
+        letter-spacing: 2px;
+        text-align: left;
+      }
 
-  tick();
-  setInterval(tick, 1000);
+      .timer {
+        color: #ffd700;
+        font-size: clamp(36px, 8vw, 120px);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
 
-</script>
+      .labels,
+      .t-unit {
+        font-size: 0.7em;
+        color: white;
+        margin-top: 8px;
+        opacity: 0.7;
+        text-transform: uppercase;
+        /*letter-spacing: 0.1em;*/
+        letter-spacing: 5px;
+      }
 
-</body>
+      .workdays {
+        font-size: 70px !important;
+        margin-top: 30px;
+        font-size: 28px;
+      }
+
+      /* Le nombre de jours ouvrés est mis en valeur */
+      .workdays strong {
+        font-size: clamp(48px, 7vw, 100px);
+        font-weight: 700;
+        color: #ffd700;
+      }
+
+      /* Animation pour faire défiler les images du diaporama.
+       Chaque image reste visible pendant environ 5 secondes avant de
+       s’estomper pour laisser place à la suivante. */
+      @keyframes fade {
+        0%,
+        33% {
+          opacity: 1;
+        }
+        40%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      /* Applique l’animation à toutes les diapositives */
+      .slide {
+        animation: fade 15s infinite;
+      }
+
+      /* Décale le début de l’animation pour chaque image afin qu’elles ne se
+       chevauchent pas */
+      .slide:nth-child(1) {
+        animation-delay: 0s;
+      }
+      .slide:nth-child(2) {
+        animation-delay: 5s;
+      }
+      .slide:nth-child(3) {
+        animation-delay: 10s;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="slideshow-container">
+      <!-- Les photos d'Asie du Sud‑Est téléchargées se trouvent dans le dossier partagé -->
+      <img
+        class="slide"
+        src="florian-wehde-lY87gHWdGNo-unsplash.jpg"
+        alt="Rue animée en Asie du Sud‑Est"
+      />
+      <img
+        class="slide"
+        src="giuliano-gabella-S2aZq6yG-b4-unsplash.jpg"
+        alt="Lagune turquoise en Asie du Sud‑Est"
+      />
+      <img
+        class="slide"
+        src="guille-alvarez-P11Z-nILhCs-unsplash.jpg"
+        alt="Pêcheur avec filet en Asie du Sud‑Est"
+      />
+    </div>
+
+    <div class="wrap">
+      <div class="content">
+        <div class="title">Année sabbatique dans...</div>
+        <div id="timer" class="timer">--j --h --m --s</div>
+        <!-- <div class="labels">jours · heures · minutes · secondes</div> -->
+        <div class="workdays">
+          Jours de travail restants : <strong id="workdays">--</strong>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Date cible : 31 mai 2026 à 23 h 59 min 59 s
+      const TARGET = new Date(2026, 4, 31, 23, 59, 59);
+
+      // Jours fériés en France (format AAAAMMJJ)
+      const PUBLIC_HOLIDAYS = new Set([
+        "20260406", // Lundi de Pâques
+        "20260501", // Fête du Travail
+        "20260508", // Victoire de 1945
+        "20260514", // Ascension
+        "20260525", // Lundi de Pentecôte
+      ]);
+
+      // Congés personnels (à personnaliser)
+      const PERSONAL_LEAVES = new Set([
+        "20260507",
+        // "20260512",
+        // "20260513"
+      ]);
+
+      // Convertit une date en chaîne AAAAMMJJ
+      function formatYYYYMMDD(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}${m}${d}`;
+      }
+
+      // Calcule le nombre de jours ouvrés restant entre deux dates incluses
+      function businessDaysRemaining(start, end) {
+        const s = new Date(start);
+        const e = new Date(end);
+        s.setHours(0, 0, 0, 0);
+        e.setHours(0, 0, 0, 0);
+        if (s > e) return 0;
+        let count = 0;
+        for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+          const day = d.getDay();
+          const isWeekend = day === 0 || day === 6;
+          const key = formatYYYYMMDD(d);
+          const isHoliday = PUBLIC_HOLIDAYS.has(key);
+          const isPersonalLeave = PERSONAL_LEAVES.has(key);
+          if (!isWeekend && !isHoliday && !isPersonalLeave) {
+            count++;
+          }
+        }
+        return count;
+      }
+
+      // Met à jour le compte à rebours et le nombre de jours ouvrés
+      function tick() {
+        const now = new Date();
+        let diff = TARGET - now;
+        if (diff < 0) diff = 0;
+        const totalSeconds = Math.floor(diff / 1000);
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        document.getElementById("timer").innerHTML =
+          `${days} <span class="t-unit">jours</span> ${String(hours).padStart(2, "0")} <span class="t-unit">heures</span> <br/>` +
+          `${String(minutes).padStart(2, "0")} <span class="t-unit">minutes</span> ${String(seconds).padStart(2, "0")} <span class="t-unit">secondes</span>`;
+        document.getElementById("workdays").textContent = businessDaysRemaining(
+          now,
+          TARGET,
+        );
+      }
+      // Mise à jour initiale, puis toutes les secondes
+      tick();
+      setInterval(tick, 1000);
+
+      // Gestion du diaporama : fait défiler les images avec un fondu
+      const slides = document.querySelectorAll(".slide");
+      let currentSlide = 0;
+      function showSlide() {
+        slides.forEach((slide, i) => {
+          slide.style.opacity = i === currentSlide ? "1" : "0";
+        });
+        currentSlide = (currentSlide + 1) % slides.length;
+      }
+      // Affiche la première image immédiatement
+      showSlide();
+      // Change d’image toutes les 5 secondes
+      setInterval(showSlide, 15000);
+    </script>
+  </body>
 </html>
