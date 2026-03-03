@@ -5,17 +5,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Année sabbatique – compte à rebours</title>
 
-    <!--
-    Cette page web affiche un compte à rebours jusqu'au 31 mai 2026 et
-    calcule le nombre de jours ouvrés restants en tenant compte des
-    week‑ends, des jours fériés et des congés personnels. Pour rendre
-    l’attente plus agréable, un diaporama de photos d’Asie du Sud‑Est
-    défile en arrière‑plan. La typographie et les couleurs ont été
-    modernisées et la taille du nombre de jours de travail restants a
-    été agrandie.
-  -->
-
-    <!-- Importation d’une police élégante -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -45,7 +34,7 @@
         z-index: 0;
       }
 
-      /* Chaque image du diaporama occupe toute la surface et utilise un fondu */
+      /* Chaque image du diaporama occupe toute la surface et utilise un fondu géré par JS */
       .slide {
         position: absolute;
         top: 0;
@@ -80,7 +69,6 @@
         font-size: clamp(32px, 6vw, 80px);
         font-weight: 600;
         margin-bottom: 16px;
-        /* letter-spacing: 0.05em; */
         letter-spacing: 2px;
         text-align: left;
       }
@@ -99,7 +87,6 @@
         margin-top: 8px;
         opacity: 0.7;
         text-transform: uppercase;
-        /*letter-spacing: 0.1em;*/
         letter-spacing: 5px;
       }
 
@@ -115,42 +102,10 @@
         font-weight: 700;
         color: #ffd700;
       }
-
-      /* Animation pour faire défiler les images du diaporama.
-       Chaque image reste visible pendant environ 5 secondes avant de
-       s’estomper pour laisser place à la suivante. */
-      @keyframes fade {
-        0%,
-        33% {
-          opacity: 1;
-        }
-        40%,
-        100% {
-          opacity: 0;
-        }
-      }
-
-      /* Applique l’animation à toutes les diapositives */
-      .slide {
-        animation: fade 15s infinite;
-      }
-
-      /* Décale le début de l’animation pour chaque image afin qu’elles ne se
-       chevauchent pas */
-      .slide:nth-child(1) {
-        animation-delay: 0s;
-      }
-      .slide:nth-child(2) {
-        animation-delay: 5s;
-      }
-      .slide:nth-child(3) {
-        animation-delay: 10s;
-      }
     </style>
   </head>
   <body>
     <div class="slideshow-container">
-      <!-- Les photos d'Asie du Sud‑Est téléchargées se trouvent dans le dossier partagé -->
       <img
         class="slide"
         src="florian-wehde-lY87gHWdGNo-unsplash.jpg"
@@ -166,13 +121,22 @@
         src="guille-alvarez-P11Z-nILhCs-unsplash.jpg"
         alt="Pêcheur avec filet en Asie du Sud‑Est"
       />
+      <img
+        class="slide"
+        src="guilin.webp"
+        alt="Paysage de Guilin"
+      />
+      <img
+        class="slide"
+        src="china-sunset-on-rice-fields.png"
+        alt="Coucher de soleil sur les rizières en Chine"
+      />
     </div>
 
     <div class="wrap">
       <div class="content">
         <div class="title">Année sabbatique dans...</div>
         <div id="timer" class="timer">--j --h --m --s</div>
-        <!-- <div class="labels">jours · heures · minutes · secondes</div> -->
         <div class="workdays">
           Jours de travail restants : <strong id="workdays">--</strong>
         </div>
@@ -180,7 +144,7 @@
     </div>
 
     <script>
-      // Date cible : 31 mai 2026 à 23 h 59 min 59 s
+      // Date cible : 31 mai 2026 à 23 h 59 min 59 s
       const TARGET = new Date(2026, 4, 31, 23, 59, 59);
 
       // Jours fériés en France (format AAAAMMJJ)
@@ -194,14 +158,28 @@
 
       // Congés personnels (à personnaliser)
       const PERSONAL_LEAVES = new Set([
+        // Congés du 23 au 27 Mars
+        "20260323",
+        "20260324",
+        "20260325",
+        "20260326",
+        "20260327",
+        
+        // Anciens congés déjà présents
         "20260330",
         "20260331",
         "20260401",
         "20260402",
         "20260403",
+
+        // Congés du 30 Avril au 6 Mai (sans les week-ends ni le 1er mai)
+        "20260430", // Jeudi
+        // Le 1er Mai est déjà géré par PUBLIC_HOLIDAYS, et le 2/3 sont le week-end
+        "20260504", // Lundi
+        "20260505", // Mardi
+        "20260506", // Mercredi
+
         "20260507",
-        // "20260512",
-        // "20260513"
       ]);
 
       // Convertit une date en chaîne AAAAMMJJ
@@ -266,8 +244,8 @@
       }
       // Affiche la première image immédiatement
       showSlide();
-      // Change d’image toutes les 5 secondes
-      setInterval(showSlide, 15000);
+      // Change d’image toutes les 5 secondes (5000 millisecondes)
+      setInterval(showSlide, 5000);
     </script>
   </body>
 </html>
