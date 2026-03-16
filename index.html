@@ -23,22 +23,16 @@
         overflow: hidden;
       }
 
-      /* Conteneur du diaporama : occupe tout l'écran et placé derrière le contenu */
       .slideshow-container {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        inset: 0;
         overflow: hidden;
         z-index: 0;
       }
 
-      /* Chaque image du diaporama occupe toute la surface et utilise un fondu géré par JS */
       .slide {
         position: absolute;
-        top: 0;
-        left: 0;
+        inset: 0;
         width: 100%;
         height: 100%;
         object-fit: cover;
@@ -46,7 +40,6 @@
         transition: opacity 1s ease-in-out;
       }
 
-      /* Conteneur principal pour centrer le texte */
       .wrap {
         height: 100%;
         display: grid;
@@ -54,15 +47,20 @@
         text-align: center;
         position: relative;
         z-index: 2;
+        padding: 20px;
+        box-sizing: border-box;
       }
 
       .content {
         position: relative;
         z-index: 3;
-        padding: 20px;
-        background: rgba(11, 15, 25, 0.4);
-        border-radius: 12px;
+        width: min(1300px, 96vw);
+        padding: 28px 36px;
+        background: rgba(11, 15, 25, 0.42);
+        border-radius: 16px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(2px);
+        box-sizing: border-box;
       }
 
       .title {
@@ -78,29 +76,60 @@
         font-size: clamp(36px, 8vw, 120px);
         font-weight: 700;
         font-variant-numeric: tabular-nums;
+        line-height: 1.08;
       }
 
-      .labels,
       .t-unit {
-        font-size: 0.7em;
+        font-size: 0.28em;
         color: white;
-        margin-top: 8px;
-        opacity: 0.7;
+        opacity: 0.8;
         text-transform: uppercase;
-        letter-spacing: 5px;
+        letter-spacing: 3px;
+        vertical-align: middle;
       }
 
-      .workdays {
-        font-size: 70px !important;
-        margin-top: 30px;
-        font-size: 28px;
+      .stats {
+        margin-top: 28px;
+        display: grid;
+        gap: 16px;
       }
 
-      /* Le nombre de jours ouvrés est mis en valeur */
-      .workdays strong {
-        font-size: clamp(48px, 7vw, 100px);
-        font-weight: 700;
+      .stat-line {
+        font-size: clamp(20px, 2vw, 30px);
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+      }
+
+      .stat-line strong {
         color: #ffd700;
+        font-size: clamp(26px, 3vw, 42px);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 700px) {
+        .content {
+          width: min(98vw, 98vw);
+          padding: 20px 16px;
+        }
+
+        .stat-line {
+          font-size: 18px;
+        }
+
+        .stat-line strong {
+          font-size: 24px;
+          display: inline-block;
+          margin-top: 6px;
+        }
+
+        .t-unit {
+          letter-spacing: 2px;
+        }
       }
     </style>
   </head>
@@ -109,23 +138,19 @@
       <img
         class="slide"
         src="florian-wehde-lY87gHWdGNo-unsplash.jpg"
-        alt="Rue animée en Asie du Sud‑Est"
+        alt="Rue animée en Asie du Sud-Est"
       />
       <img
         class="slide"
         src="giuliano-gabella-S2aZq6yG-b4-unsplash.jpg"
-        alt="Lagune turquoise en Asie du Sud‑Est"
+        alt="Lagune turquoise en Asie du Sud-Est"
       />
       <img
         class="slide"
         src="guille-alvarez-P11Z-nILhCs-unsplash.jpg"
-        alt="Pêcheur avec filet en Asie du Sud‑Est"
+        alt="Pêcheur avec filet en Asie du Sud-Est"
       />
-      <img
-        class="slide"
-        src="guilin.webp"
-        alt="Paysage de Guilin"
-      />
+      <img class="slide" src="guilin.webp" alt="Paysage de Guilin" />
       <img
         class="slide"
         src="china-sunset-on-rice-fields.png"
@@ -137,52 +162,58 @@
       <div class="content">
         <div class="title">Année sabbatique dans...</div>
         <div id="timer" class="timer">--j --h --m --s</div>
-        <div class="workdays">
-          Jours de travail restants : <strong id="workdays">--</strong>
+
+        <div class="stats">
+          <div class="stat-line">
+            Temps de travail restant avant l’année sabbatique :
+            <strong id="worktime">--</strong>
+          </div>
+
+          <div class="stat-line">
+            Temps avant le week-end :
+            <strong id="weekendCountdown">--</strong>
+          </div>
+
+          <div id="vacationLine" class="stat-line hidden">
+            Temps avant les prochaines vacances :
+            <strong id="vacationCountdown">--</strong>
+          </div>
         </div>
       </div>
     </div>
 
     <script>
-      // Date cible : 31 mai 2026 à 23 h 59 min 59 s
       const TARGET = new Date(2026, 4, 31, 23, 59, 59);
+      const WORK_END_HOUR = 18;
 
-      // Jours fériés en France (format AAAAMMJJ)
       const PUBLIC_HOLIDAYS = new Set([
-        "20260406", // Lundi de Pâques
-        "20260501", // Fête du Travail
-        "20260508", // Victoire de 1945
-        "20260514", // Ascension
-        "20260525", // Lundi de Pentecôte
+        "20260406",
+        "20260501",
+        "20260508",
+        "20260514",
+        "20260525",
       ]);
 
-      // Congés personnels (à personnaliser)
       const PERSONAL_LEAVES = new Set([
-        // Congés du 23 au 27 Mars
         "20260323",
         "20260324",
         "20260325",
         "20260326",
         "20260327",
-        
-        // Anciens congés déjà présents
+
         "20260330",
         "20260331",
         "20260401",
         "20260402",
         "20260403",
 
-        // Congés du 30 Avril au 6 Mai (sans les week-ends ni le 1er mai)
-        "20260430", // Jeudi
-        // Le 1er Mai est déjà géré par PUBLIC_HOLIDAYS, et le 2/3 sont le week-end
-        "20260504", // Lundi
-        "20260505", // Mardi
-        "20260506", // Mercredi
-
+        "20260430",
+        "20260504",
+        "20260505",
+        "20260506",
         "20260507",
       ]);
 
-      // Convertit une date en chaîne AAAAMMJJ
       function formatYYYYMMDD(date) {
         const y = date.getFullYear();
         const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -190,61 +221,204 @@
         return `${y}${m}${d}`;
       }
 
-      // Calcule le nombre de jours ouvrés restant entre deux dates incluses
-      function businessDaysRemaining(start, end) {
-        const s = new Date(start);
-        const e = new Date(end);
-        s.setHours(0, 0, 0, 0);
-        e.setHours(0, 0, 0, 0);
-        if (s > e) return 0;
-        let count = 0;
-        for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-          const day = d.getDay();
-          const isWeekend = day === 0 || day === 6;
-          const key = formatYYYYMMDD(d);
-          const isHoliday = PUBLIC_HOLIDAYS.has(key);
-          const isPersonalLeave = PERSONAL_LEAVES.has(key);
-          if (!isWeekend && !isHoliday && !isPersonalLeave) {
-            count++;
-          }
-        }
-        return count;
+      function startOfDay(date) {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        return d;
       }
 
-      // Met à jour le compte à rebours et le nombre de jours ouvrés
-      function tick() {
-        const now = new Date();
-        let diff = TARGET - now;
-        if (diff < 0) diff = 0;
-        const totalSeconds = Math.floor(diff / 1000);
+      function isWeekend(date) {
+        const day = date.getDay();
+        return day === 0 || day === 6;
+      }
+
+      function isBusinessDay(date) {
+        const key = formatYYYYMMDD(date);
+        return (
+          !isWeekend(date) &&
+          !PUBLIC_HOLIDAYS.has(key) &&
+          !PERSONAL_LEAVES.has(key)
+        );
+      }
+
+      function formatDuration(ms) {
+        if (ms <= 0) {
+          return "0 j 00 h 00 m 00 s";
+        }
+
+        const totalSeconds = Math.floor(ms / 1000);
         const days = Math.floor(totalSeconds / 86400);
         const hours = Math.floor((totalSeconds % 86400) / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
-        document.getElementById("timer").innerHTML =
-          `${days} <span class="t-unit">jours</span> ${String(hours).padStart(2, "0")} <span class="t-unit">heures</span> <br/>` +
-          `${String(minutes).padStart(2, "0")} <span class="t-unit">minutes</span> ${String(seconds).padStart(2, "0")} <span class="t-unit">secondes</span>`;
-        document.getElementById("workdays").textContent = businessDaysRemaining(
-          now,
-          TARGET,
-        );
+
+        return `${days} j ${String(hours).padStart(2, "0")} h ${String(
+          minutes
+        ).padStart(2, "0")} m ${String(seconds).padStart(2, "0")} s`;
       }
-      // Mise à jour initiale, puis toutes les secondes
+
+      function formatMainCountdown(ms) {
+        if (ms <= 0) {
+          return `0 <span class="t-unit">jours</span> 00 <span class="t-unit">heures</span><br/>00 <span class="t-unit">minutes</span> 00 <span class="t-unit">secondes</span>`;
+        }
+
+        const totalSeconds = Math.floor(ms / 1000);
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        return `${days} <span class="t-unit">jours</span> ${String(
+          hours
+        ).padStart(2, "0")} <span class="t-unit">heures</span><br/>${String(
+          minutes
+        ).padStart(2, "0")} <span class="t-unit">minutes</span> ${String(
+          seconds
+        ).padStart(2, "0")} <span class="t-unit">secondes</span>`;
+      }
+
+      function getWorkdayEnd(date) {
+        const d = new Date(date);
+        d.setHours(WORK_END_HOUR, 0, 0, 0);
+        return d;
+      }
+
+      function workingTimeRemainingUntil(target, now = new Date()) {
+        if (now >= target) return 0;
+
+        let total = 0;
+        const today = startOfDay(now);
+        const lastDay = startOfDay(target);
+
+        for (let d = new Date(today); d <= lastDay; d.setDate(d.getDate() + 1)) {
+          if (!isBusinessDay(d)) continue;
+
+          const currentDay = startOfDay(d).getTime() === today.getTime();
+
+          if (currentDay) {
+            const workEnd = getWorkdayEnd(now);
+            if (now < workEnd) {
+              total += Math.max(0, workEnd - now);
+            }
+          } else {
+            total += 24 * 60 * 60 * 1000;
+          }
+        }
+
+        return total;
+      }
+
+      function nextWeekendStart(now = new Date()) {
+        const d = new Date(now);
+
+        while (true) {
+          if (d.getDay() === 6) {
+            d.setHours(0, 0, 0, 0);
+            return d;
+          }
+          d.setDate(d.getDate() + 1);
+          d.setHours(0, 0, 0, 0);
+        }
+      }
+
+      function getPersonalLeaveRanges() {
+        const sorted = [...PERSONAL_LEAVES].sort();
+        if (!sorted.length) return [];
+
+        const ranges = [];
+        let rangeStart = sorted[0];
+        let previous = sorted[0];
+
+        function parseKey(key) {
+          const y = Number(key.slice(0, 4));
+          const m = Number(key.slice(4, 6)) - 1;
+          const d = Number(key.slice(6, 8));
+          return new Date(y, m, d);
+        }
+
+        function dayDiff(a, b) {
+          const ms = startOfDay(b) - startOfDay(a);
+          return Math.round(ms / 86400000);
+        }
+
+        for (let i = 1; i < sorted.length; i++) {
+          const prevDate = parseKey(previous);
+          const currentDate = parseKey(sorted[i]);
+
+          if (dayDiff(prevDate, currentDate) === 1) {
+            previous = sorted[i];
+            continue;
+          }
+
+          ranges.push({
+            start: parseKey(rangeStart),
+            end: parseKey(previous),
+          });
+
+          rangeStart = sorted[i];
+          previous = sorted[i];
+        }
+
+        ranges.push({
+          start: parseKey(rangeStart),
+          end: parseKey(previous),
+        });
+
+        return ranges;
+      }
+
+      function getNextVacationStart(now = new Date()) {
+        const ranges = getPersonalLeaveRanges();
+
+        for (const range of ranges) {
+          if (startOfDay(range.start) > now) {
+            return startOfDay(range.start);
+          }
+        }
+
+        return null;
+      }
+
+      function tick() {
+        const now = new Date();
+
+        const sabbaticalDiff = Math.max(0, TARGET - now);
+        document.getElementById("timer").innerHTML = formatMainCountdown(sabbaticalDiff);
+
+        const workRemaining = workingTimeRemainingUntil(TARGET, now);
+        document.getElementById("worktime").textContent = formatDuration(workRemaining);
+
+        const weekendStart = nextWeekendStart(now);
+        const weekendDiff = Math.max(0, weekendStart - now);
+        document.getElementById("weekendCountdown").textContent = formatDuration(weekendDiff);
+
+        const nextVacation = getNextVacationStart(now);
+        const vacationLine = document.getElementById("vacationLine");
+
+        if (nextVacation) {
+          const vacationDiff = Math.max(0, nextVacation - now);
+          document.getElementById("vacationCountdown").textContent =
+            formatDuration(vacationDiff);
+          vacationLine.classList.remove("hidden");
+        } else {
+          vacationLine.classList.add("hidden");
+        }
+      }
+
       tick();
       setInterval(tick, 1000);
 
-      // Gestion du diaporama : fait défiler les images avec un fondu
       const slides = document.querySelectorAll(".slide");
       let currentSlide = 0;
+
       function showSlide() {
         slides.forEach((slide, i) => {
           slide.style.opacity = i === currentSlide ? "1" : "0";
         });
         currentSlide = (currentSlide + 1) % slides.length;
       }
-      // Affiche la première image immédiatement
+
       showSlide();
-      // Change d’image toutes les 5 secondes (5000 millisecondes)
       setInterval(showSlide, 5000);
     </script>
   </body>
