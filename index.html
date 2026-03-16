@@ -175,7 +175,7 @@
           </div>
 
           <div id="vacationLine" class="stat-line hidden">
-            <span id="vacationLabel">Temps avant 0 jours de vacances :</span>
+            <span id="vacationLabel">Temps avant 0 jour de vacances :</span>
             <strong id="vacationCountdown">--</strong>
           </div>
         </div>
@@ -195,8 +195,8 @@
         "20260525",
       ]);
 
-      // Définition propre des périodes de vacances
-      const VACATION_PERIODS = [
+      // Périodes de congés payés posés
+      const VACATION_PERIODS_RAW = [
         { start: "20260323", end: "20260327" },
         { start: "20260330", end: "20260403" },
         { start: "20260430", end: "20260507" },
@@ -228,9 +228,23 @@
         return d;
       }
 
+      function addDays(date, days) {
+        const d = new Date(date);
+        d.setDate(d.getDate() + days);
+        return d;
+      }
+
       function isWeekend(date) {
         const day = date.getDay();
         return day === 0 || day === 6;
+      }
+
+      function isHoliday(date) {
+        return PUBLIC_HOLIDAYS.has(formatYYYYMMDD(date));
+      }
+
+      function isNaturallyNonWorkingDay(date) {
+        return isWeekend(date) || isHoliday(date);
       }
 
       function buildPersonalLeavesSet(periods) {
@@ -248,7 +262,7 @@
         return set;
       }
 
-      const PERSONAL_LEAVES = buildPersonalLeavesSet(VACATION_PERIODS);
+      const PERSONAL_LEAVES_RAW = buildPersonalLeavesSet(VACATION_PERIODS_RAW);
 
       function isBusinessDay(date) {
         const key = formatYYYYMMDD(date);
@@ -258,6 +272,78 @@
           !PERSONAL_LEAVES.has(key)
         );
       }
+
+      function periodPaidLeaveDays(period) {
+        let count = 0;
+        const start = parseKey(period.start);
+        const end = parseKey(period.end);
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          if (PERSONAL_LEAVES_RAW.has(formatYYYYMMDD(d))) {
+            count++;
+          }
+        }
+
+        return count;
+      }
+
+      function onlyNaturallyNonWorkingDaysBetween(endA, startB) {
+        const from = addDays(parseKey(endA), 1);
+        const to = addDays(parseKey(startB), -1);
+
+        if (from > to) {
+          return true;
+        }
+
+        for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+          if (!isNaturallyNonWorkingDay(d)) {
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      function mergeContinuousVacationPeriods(periods) {
+        if (!periods.length) return [];
+
+        const sorted = [...periods].sort((a, b) =>
+          a.start.localeCompare(b.start)
+        );
+
+        const merged = [];
+        let current = {
+          start: sorted[0].start,
+          end: sorted[0].end,
+          paidLeaveDays: periodPaidLeaveDays(sorted[0]),
+        };
+
+        for (let i = 1; i < sorted.length; i++) {
+          const next = sorted[i];
+
+          if (onlyNaturallyNonWorkingDaysBetween(current.end, next.start)) {
+            current.end = next.end > current.end ? next.end : current.end;
+            current.paidLeaveDays += periodPaidLeaveDays(next);
+          } else {
+            merged.push(current);
+            current = {
+              start: next.start,
+              end: next.end,
+              paidLeaveDays: periodPaidLeaveDays(next),
+            };
+          }
+        }
+
+        merged.push(current);
+        return merged;
+      }
+
+      const VACATION_BLOCKS = mergeContinuousVacationPeriods(
+        VACATION_PERIODS_RAW
+      );
+
+      // Jours réellement non travaillés utilisés pour le calcul métier global
+      const PERSONAL_LEAVES = buildPersonalLeavesSet(VACATION_BLOCKS);
 
       function formatDuration(ms) {
         if (ms <= 0) {
@@ -299,20 +385,6 @@
         ).padStart(2, "0")} <span class="t-unit">secondes</span>`;
       }
 
-      function countVacationDays(period) {
-        const start = parseKey(period.start);
-        const end = parseKey(period.end);
-        let count = 0;
-
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          if (PERSONAL_LEAVES.has(formatYYYYMMDD(d))) {
-            count++;
-          }
-        }
-
-        return count;
-      }
-
       function getLastWorkingMomentBeforeDate(date) {
         const d = startOfDay(date);
         d.setDate(d.getDate() - 1);
@@ -326,9 +398,9 @@
       }
 
       function getNextVacationInfo(now = new Date()) {
-        for (const period of VACATION_PERIODS) {
-          const start = parseKey(period.start);
-          const end = parseKey(period.end);
+        for (const block of VACATION_BLOCKS) {
+          const start = parseKey(block.start);
+          const end = parseKey(block.end);
 
           if (startOfDay(start) <= now) {
             continue;
@@ -337,7 +409,7 @@
           return {
             start,
             end,
-            days: countVacationDays(period),
+            days: block.paidLeaveDays,
             lastWorkingMoment: getLastWorkingMomentBeforeDate(start),
           };
         }
@@ -346,7 +418,7 @@
       }
 
       function getThisWeekFridayEnd(now = new Date()) {
-        const day = now.getDay(); // 0 dimanche ... 5 vendredi ... 6 samedi
+        const day = now.getDay();
         const diffToFriday = 5 - day;
 
         if (diffToFriday < 0) {
@@ -360,9 +432,6 @@
         return friday;
       }
 
-      // Temps de travail restant selon ta logique métier :
-      // - aujourd'hui avant 18h => temps réel restant
-      // - chaque jour futur travaillé complet => 1 jour
       function computeWorkRemainingUntil(stopAt, now = new Date()) {
         if (!stopAt || now >= stopAt) {
           return 0;
@@ -395,17 +464,14 @@
       function tick() {
         const now = new Date();
 
-        // Compte à rebours calendaire sabbatique
         const sabbaticalDiff = Math.max(0, TARGET - now);
         document.getElementById("timer").innerHTML =
           formatMainCountdown(sabbaticalDiff);
 
-        // Travail restant avant sabbatique
         const worktimeToSabbatical = computeWorkRemainingUntil(TARGET, now);
         document.getElementById("worktimeToSabbatical").textContent =
           formatDuration(worktimeToSabbatical);
 
-        // Travail restant avant week-end
         const fridayEnd = getThisWeekFridayEnd(now);
         let weekendWorkRemaining = 0;
 
@@ -416,7 +482,6 @@
         document.getElementById("weekendWorkCountdown").textContent =
           formatDuration(weekendWorkRemaining);
 
-        // Travail restant avant prochaines vacances
         const nextVacation = getNextVacationInfo(now);
         const vacationLine = document.getElementById("vacationLine");
 
