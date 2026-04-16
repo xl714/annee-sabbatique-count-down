@@ -563,7 +563,7 @@
           </div>
 
           <div id="vacationLine" class="stat-line hidden">
-            <span id="vacationLabel">Temps avant 0 jour de vacances :</span>
+            <span id="vacationLabel">Reste a travailler avant 0 jour de vacances :</span>
             <strong id="vacationCountdown">--</strong>
           </div>
         </div>
@@ -1421,7 +1421,7 @@
             derived.personalLeaves
           );
 
-          elements.vacationLabel.textContent = `Temps avant ${nextVacation.days} ${
+          elements.vacationLabel.textContent = `Reste a travailler avant ${nextVacation.days} ${
             nextVacation.days > 1 ? "jours" : "jour"
           } de vacances :`;
           elements.vacationCountdown.textContent = formatDuration(remaining);
